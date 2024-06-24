@@ -1,13 +1,14 @@
 from pathlib import Path
 from re import findall
 
-from modules.CardType import CardType
+from modules.BaseCardType import BaseCardType
 from modules.Debug import log
 from modules.RemoteFile import RemoteFile
 
-class WhiteTextAbsolute(CardType):
+class WhiteTextAbsolute(BaseCardType):
     """
-    This class describes Wdvh's absolute CardType intended for absolute episode ordering
+    This class describes Wdvh's absolute CardType intended for absolute
+    episode ordering
     """
 
     """Directory where all reference files used by this card are stored"""
@@ -31,7 +32,7 @@ class WhiteTextAbsolute(CardType):
     USES_SEASON_TITLE = False
 
     """Standard class has standard archive name"""
-    ARCHIVE_NAME = 'Absolute Ordering Style'
+    ARCHIVE_NAME = 'White Text Absolute Ordering Style'
     
     EPISODE_TEXT_FORMAT = "E{abs_number:02}"
     
@@ -44,72 +45,61 @@ class WhiteTextAbsolute(CardType):
     SERIES_COUNT_TEXT_COLOR = '#FFFFFF'
 
     """Paths to intermediate files that are deleted after the card is created"""
-    __SOURCE_WITH_GRADIENT = CardType.TEMP_DIR / 'source_gradient.png'
-    __GRADIENT_WITH_TITLE = CardType.TEMP_DIR / 'gradient_title.png'
-    __SERIES_COUNT_TEXT = CardType.TEMP_DIR / 'series_count_text.png'
+    __SOURCE_WITH_GRADIENT = BaseCardType.TEMP_DIR / 'source_gradient.png'
+    __GRADIENT_WITH_TITLE = BaseCardType.TEMP_DIR / 'gradient_title.png'
 
-    __slots__ = ('source_file', 'output_file', 'title',
-                 'episode_text', 'font', 'font_size', 'title_color',
-                 'hide_season', 'blur', 'vertical_shift', 'interline_spacing',
-                 'kerning', 'stroke_width')
+    __slots__ = (
+        'source_file', 'output_file', 'title', 'episode_text', 'font',
+        'font_size', 'title_color', 'vertical_shift', 'interline_spacing',
+        'kerning', 'stroke_width'
+    )
 
 
-    def __init__(self, source: Path, output_file: Path, title: str,
-                 episode_text: str, font: str,
-                 font_size: float, title_color: str,
-                 blur: bool=False, vertical_shift: int=0,
-                 interline_spacing: int=0, kerning: float=1.0,
-                 stroke_width: float=1.0, *args, **kwargs) -> None:
+    def __init__(self, *,
+            source_file: Path,
+            card_file: Path,
+            title_text: str,
+            episode_text: str,
+            font_color: str = TITLE_COLOR,
+            font_file: str = TITLE_FONT,
+            font_size: float = 1.0,
+            font_interline_spacing: int = 0,
+            font_kerning: float = 1.0,
+            font_stroke_width: float = 1.0,
+            font_vertical_shift: int = 0,
+            blur: bool = False,
+            grayscale: bool = False,
+            **unused) -> None:
         """
-        Initialize the TitleCardMaker object. This primarily just stores
-        instance variables for later use in `create()`. If the provided font
-        does not have a character in the title text, a space is used instead.
-
-        :param  source:             Source image.
-        :param  output_file:        Output file.
-        :param  title_top_line:     Episode title.
-        :param  episode_text:       Text to use as episode count text.
-        :param  font:               Font to use for the episode title. MUST be a
-                                    a valid ImageMagick font, or filepath to a
-                                    font.
-        :param  font_size:          Scalar to apply to the title font size.
-        :param  title_color:        Color to use for the episode title.
-        :param  blur:               Whether to blur the source image.
-        :param  vertical_shift:     Pixels to adjust title vertical shift by.
-        :param  interline_spacing:  Pixels to adjust title interline spacing by.
-        :param  kerning:            Scalar to apply to kerning of the title text.
-        :param  stroke_width:       Scalar to apply to black stroke of the title
-                                    text.
-        :param  args and kwargs:    Unused arguments to permit generalized calls
-                                    for any CardType.
+        Initialize this CardType object.
         """
         
         # Initialize the parent class - this sets up an ImageMagickInterface
-        super().__init__()
+        super().__init__(blur, grayscale)
 
-        self.source_file = source
-        self.output_file = output_file
+        self.source_file = source_file
+        self.output_file = card_file
 
         # Ensure characters that need to be escaped are
-        self.title = self.image_magick.escape_chars(title)
+        self.title = self.image_magick.escape_chars(title_text)
         self.episode_text = self.image_magick.escape_chars(episode_text.upper())
 
-        self.font = font
+        self.font = font_file
+        self.title_color = font_color
+        self.interline_spacing = font_interline_spacing
+        self.kerning = font_kerning
         self.font_size = font_size
-        self.title_color = title_color
-        self.blur = blur
-        self.vertical_shift = vertical_shift
-        self.interline_spacing = interline_spacing
-        self.kerning = kerning
-        self.stroke_width = stroke_width
+        self.stroke_width = font_stroke_width
+        self.vertical_shift = font_vertical_shift
 
 
-    def __title_text_global_effects(self) -> list:
+    def __title_text_global_effects(self) -> list[str]:
         """
         ImageMagick commands to implement the title text's global effects.
         Specifically the the font, kerning, fontsize, and center gravity.
         
-        :returns:   List of ImageMagick commands.
+        Returns:
+            List of ImageMagick commands.
         """
 
         font_size = 180 * self.font_size
@@ -126,11 +116,12 @@ class WhiteTextAbsolute(CardType):
         ]   
 
 
-    def __title_text_black_stroke(self) -> list:
+    def __title_text_black_stroke(self) -> list[str]:
         """
         ImageMagick commands to implement the title text's black stroke.
         
-        :returns:   List of ImageMagick commands.
+        Returns:
+            List of ImageMagick commands.
         """
 
         stroke_width = 4.0 * self.stroke_width
@@ -142,12 +133,13 @@ class WhiteTextAbsolute(CardType):
         ]
 
 
-    def __series_count_text_global_effects(self) -> list:
+    def __series_count_text_global_effects(self) -> list[str]:
         """
         ImageMagick commands for global text effects applied to all series count
         text (season/episode count and dot).
         
-        :returns:   List of ImageMagick commands.
+        Returns:
+            List of ImageMagick commands.
         """
 
         return [
@@ -156,12 +148,13 @@ class WhiteTextAbsolute(CardType):
         ]
 
 
-    def __series_count_text_black_stroke(self) -> list:
+    def __series_count_text_black_stroke(self) -> list[str]:
         """
         ImageMagick commands for adding the necessary black stroke effects to
         series count text.
         
-        :returns:   List of ImageMagick commands.
+        Returns:
+            List of ImageMagick commands.
         """
 
         return [
@@ -171,12 +164,13 @@ class WhiteTextAbsolute(CardType):
         ]
 
 
-    def __series_count_text_effects(self) -> list:
+    def __series_count_text_effects(self) -> list[str]:
         """
         ImageMagick commands for adding the necessary text effects to the series
         count text.
         
-        :returns:   List of ImageMagick commands.
+        Returns:
+            List of ImageMagick commands.
         """
 
         return [
@@ -190,16 +184,13 @@ class WhiteTextAbsolute(CardType):
         """
         Add the static gradient to this object's source image.
         
-        :returns:   Path to the created image.
+        Returns:
+            Path to the created image.
         """
 
         command = ' '.join([
             f'convert "{self.source_file.resolve()}"',
-            f'+profile "*"',
-            f'-gravity center',
-            f'-resize "{self.TITLE_CARD_SIZE}^"',
-            f'-extent "{self.TITLE_CARD_SIZE}"',
-            f'-blur {self.BLUR_PROFILE}' if self.blur else '',
+            *self.resize_and_style,
             f'"{self.__GRADIENT_IMAGE.resolve()}"',
             f'-background None',
             f'-layers Flatten',
@@ -251,11 +242,12 @@ class WhiteTextAbsolute(CardType):
             f'convert "{titled_image.resolve()}"',
             *self.__series_count_text_global_effects(),
             f'-font "{self.EPISODE_COUNT_FONT.resolve()}"',
-            f'-gravity center',
+            f'-gravity west',
             *self.__series_count_text_black_stroke(),
-            f'-annotate -1400-750 "{self.episode_text}"',
+            f'-annotate +100-750 "{self.episode_text}"',
             *self.__series_count_text_effects(),
-            f'-annotate -1400-750 "{self.episode_text}"',
+            f'-annotate +100-750 "{self.episode_text}"',
+            *self.resize_output,
             f'"{self.output_file.resolve()}"',
         ])
 
@@ -267,12 +259,14 @@ class WhiteTextAbsolute(CardType):
     @staticmethod
     def is_custom_font(font: 'Font') -> bool:
         """
-        Determines whether the given font characteristics constitute a default
-        or custom font.
+        Determines whether the given font characteristics constitute a
+        default or custom font.
         
-        :param      font:   The Font being evaluated.
+        Args:
+            font: The Font being evaluated.
         
-        :returns:   True if a custom font is indicated, False otherwise.
+        Returns:
+            True if a custom font is indicated, False otherwise.
         """
 
         return ((font.file != WhiteTextAbsolute.TITLE_FONT)
@@ -286,17 +280,18 @@ class WhiteTextAbsolute(CardType):
 
 
     @staticmethod
-    def is_custom_season_titles(custom_episode_map: bool, 
-                                episode_text_format: str) -> bool:
+    def is_custom_season_titles(
+            custom_episode_map: bool, episode_text_format: str) -> bool:
         """
-        Determines whether the given attributes constitute custom or generic
-        season titles.
+        Determines whether the given attributes constitute custom or
+        generic season titles.
         
-        :param      custom_episode_map:     Whether the EpisodeMap was
-                                            customized.
-        :param      episode_text_format:    The episode text format in use.
+        Args:
+            custom_episode_map: Whether the EpisodeMap was customized.
+            episode_text_format: The episode text format in use.
         
-        :returns:   True if custom season titles are indicated, False otherwise.
+        Returns:
+            False. Custom season titles are not used.
         """
 
         return False
@@ -304,8 +299,8 @@ class WhiteTextAbsolute(CardType):
 
     def create(self) -> None:
         """
-        Make the necessary ImageMagick and system calls to create this object's
-        defined title card.
+        Make the necessary ImageMagick and system calls to create this
+        object's defined title card.
         """
         
         # Add the gradient to the source image (always)
@@ -313,9 +308,6 @@ class WhiteTextAbsolute(CardType):
 
         # Add either one or two lines of episode text 
         titled_image = self._add_title_text(gradient_image)
-
-        # Create the output directory and any necessary parents 
-        self.output_file.parent.mkdir(parents=True, exist_ok=True)
 
         # Add episode text 
         self._add_series_count_text_no_season(titled_image)
